@@ -116,6 +116,7 @@ Currently BookTree has only been run for demo purposes using a local computer as
 
 Other features I would like to add to this application in future:
   * A statistics page, showing how your library has grown over time, your read-unread ratios, total number of pages read over time etc.
+  * Make BookTree work on mobile formats
   * The ability to scan barcodes to obtain the ISBN when accessing the site on a phone.
   * Allowing more customisation of the books in your library - perhaps being able to upload your own covers (particularly when none is available from the API) or even add entirely custom books if you can't find the exact book/version you're looking for.
   * Expand the formats to audiobooks as well, which will require a new data source
