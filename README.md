@@ -1,6 +1,6 @@
 # BookTree
 
-#### [Find a video demo of BookTree here](https://youtube.com/).
+#### [Find a video demo of BookTree here](https://youtu.be/6JjB6mI4LRY).
 
 ## General
 BookTree is a web application built using the python Flask framework with a SQLite database. The app is a book database which allows you to catalogue and organise your existing library of books (and eBooks) and create book wishlists. As a personal hoarder of books this app was built to answer the question I ask in every bookshop I wander into - "Have I got this book already?". However, the capabilities of this app also enable the user to store book reviews, keep track of borrowed/lent copies, track their reading progress, organise their books and more.
