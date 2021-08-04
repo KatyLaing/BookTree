@@ -1,0 +1,460 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<!--link in page-specific CSS-->
+<link href="/static/booksummary.css" rel="stylesheet">
+
+<!--link in progress bar CSS-->
+<link href="/static/progressbar.css" rel="stylesheet">
+
+<!--link in star rating CSS-->
+<link href="/static/stars.css" rel="stylesheet">
+
+<!--Link in the functions for adding/removing books from the wishilist and user library-->
+<script src="/static/addRemoveBooks.js"></script>
+
+{% if book_data['pages'] %}
+<!--Link in functionality for the progress bar-->
+<script src="/static/progressbar.js"></script>
+{% endif %}
+
+{% if user_data['owned'] == 'inLib' and book_data['pages'] %}
+<!--Link in functionality for the incrementing buttons-->
+<script src="/static/readIncrement.js"></script>
+{% endif %}
+
+
+
+<script>
+  
+  {% if user_data['owned'] == 'inLib' %}
+
+  
+  book_id = "{{ book_data['google_id'] }}";
+  nReads = {{ user_data["number_of_reads"] }};
+  in_progress = {{ user_data["in_progress"] }};
+
+  {% if book_data['pages'] %}
+  totalPages = {{ book_data['pages']  }};
+
+  //load the progress bar on page load - books not in progress are set to 100%
+  document.addEventListener('DOMContentLoaded', function() {
+      if(in_progress == 1){
+        $('#right-bar').css('transform', 'rotate(180deg)');
+        $('#left-bar').css('transform', 'rotate(180deg)');
+        document.getElementById('percent-read').innerHTML = "100<sup class=\"small\">%</sup>";
+      }
+      else{
+        LoadProgress(totalPages);
+      }
+  });
+
+  // add event listener to the page input to update the progress bar in the case of in progress books
+  function updateProgressNoParam(){
+    updateProgress (book_id, totalPages);
+  }
+  
+  if( in_progress == 0){
+    document.addEventListener('DOMContentLoaded', function() {
+      pagesInput = document.querySelectorAll('input[type=number]')[0];
+      pagesInput.addEventListener('change', updateProgressNoParam);
+    });
+  }
+
+  {% endif %}
+
+  //if a book rating has been assigned, fill in the relevant stars
+  document.addEventListener('DOMContentLoaded', function() {
+    rating = {{ user_data['rating']  }};
+    if(rating > 0){
+      id = "star-" + rating;
+      document.getElementById(id).checked = true;
+    }
+  });
+
+  // Add event listener that turns save button for notes green on click as confirmation
+  document.addEventListener('DOMContentLoaded', function() {
+    let save_bttn = document.getElementById("notes-save");
+    save_bttn.addEventListener('click', function(){
+      save_bttn.classList.remove("btn-primary");
+      save_bttn.classList.add("btn-success");
+    });
+  });
+
+  {% endif %}
+
+  {% if book_data['pages'] %}
+  // A function for changing the progress status to "in progress"
+  function statusInProgress(){
+    // set the progress bar and inner text to 0%
+    pagesRead = 0;
+    $('#left-bar').css('transform', 'rotate(0deg)');
+    $('#right-bar').css('transform', 'rotate(0deg)');
+    document.getElementById('percent-read').innerHTML = "0<sup class=\"small\">%</sup>";
+    // replace the read again button with the page counter and add the progress update even listener to it
+    document.getElementById('progress-content').innerHTML = "<div class='h4 font-weight-bold mb-1'><input class='font-weight-bold text-center' type='number' min='0' max='" + totalPages + "' step='1' style='border: none;width: 100px' value='0'/></div><span class='small text-gray'>Pages Read</span>";
+    document.querySelectorAll('input[type=number]')[0].addEventListener('change', updateProgressNoParam);
+    // update in_progress to true
+    in_progress = 0;
+    $.post('/updateProgressStatus', { id: book_id, in_progress : 0});
+  }
+  {% endif %}
+
+  {% if not book_data['pages'] %}
+  // if there are no book pagesthe +/- buttons simply incrememnt the #reads
+  // we will set the book to"in progress" only if the #reads = 0
+  document.addEventListener('DOMContentLoaded', function() {
+    minus = document.getElementById("minus-counter");
+    plus = document.getElementById("plus-counter");
+
+    minus.addEventListener("click", function(){
+      if(nReads > 0){
+        nReads -= 1;
+        document.getElementById("read-counter").innerHTML = nReads;
+        $.post('/updateReads', { id: book_id, reads : nReads});
+        if(nReads == 0){
+          in_progress = 0;
+          $.post('/updateProgressStatus', { id: book_id, in_progress : 0});
+        }
+      }
+      
+    });
+
+    plus.addEventListener("click", function(){
+      nReads += 1;
+      document.getElementById("read-counter").innerHTML = nReads;
+      $.post('/updateReads', { id: book_id, reads : nReads}, function(){
+        swal({
+          title: "Well Done!",
+          text: "Another book completed",
+          icon: "success",
+        });
+        if(in_progress == 0){
+          in_progress = 1;
+          $.post('/updateProgressStatus', { id: book_id, in_progress : 1});
+        }
+      });
+    });
+  });
+  {% endif %}
+</script>
+
+
+{% endblock %}
+
+{% block title %}
+    {{ book_data['title'] }}
+{% endblock %}
+
+{% block main %}
+<!--Template from https://www.bootdey.com -->
+
+<div class="container">
+    <div class="main-body">
+          <div class="row gutters-sm">
+            <div class="col-lg-12 mb-3">
+              <section class="main-title">
+                  <h1 class="main-title"><i class="fas fa-leaf"></i>{{ book_data['title'] }}{% if book_data['subtitle'] %} - {{ book_data['subtitle'] }}{% endif %}{% if book_data['authors'] %}<em style="font-size:30px"> by {{ book_data['authors'] }}</em>{% endif %}</h1>
+              </section>
+            </div>
+          </div>
+    
+          <div class="row gutters-sm">
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <div class="d-flex flex-column align-items-center text-center">
+                    {% if book_data['image'] %}
+                    <img src="{{ book_data['image'] }}" alt="BookCover" width="300">
+                    {% elif book_data['thumbnail'] %}
+                    <img src="{{ book_data['thumbnail'] }}" alt="BookCover" width="300">
+                    {% else %}
+                    <img src="/static/bookcase.jpg" alt="BookCover" width="300">
+                    {% endif%}
+                  </div>
+                </div>
+              </div>
+              
+              {% if book_data['url'] %}
+              <div class="card mt-3">
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                    <h6 class="mb-0"><i class="fab fa-google fa-lg" style="color:#4285F4"></i></h6>
+                    <button class="book-link" onclick="location.href='{{ book_data['url'] }}'">View in Google Books</button>
+                  </li>
+                </ul>
+              </div>
+              {% endif %}
+
+              <div class="card mt-3">
+                  <div class="card-body">
+                        <div class="d-flex flex-column align-items-center text-center">
+                            <div class="row mb-3">
+                                {% if user_data['owned'] == 'inLib' %}
+                                <form>
+                                    <input type="hidden" class="BookId" name="BookId" value='{{ book_data["google_id"] }}'>
+                                    <button class="remove-book col-sm-12" id="0" onclick="removelib(this, true); return false;" type="submit" style="width:300px; height:50px">
+                                        <span class="button_content button_icon"><i class="far fa-minus-square fa-2x"></i></span>
+                                        <span class="button_content">Remove From Library</span>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form>
+                                    <input type="hidden" class="BookId" name="BookId" value='{{ book_data["google_id"] }}'>
+                                    <button class="add-lib col-sm-12" id="0" onclick="addlib(this, true); return false;" type="submit" style="width:300px; height:50px">
+                                        <span class="button_content button_icon"><i class="far fa-plus-square fa-2x"></i></span>
+                                        <span class="button_content">Add To Library</span>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            <div class="row">
+                                {% if user_data['owned'] == 'inWL' %}
+                                <form>
+                                    <input type="hidden" class="BookId" name="BookId" value='{{ book_data["google_id"] }}'>
+                                    <button class="remove-book col-sm-12" id="1" onclick="removewish(this); return false;" type="submit" style="width:300px; height:50px">
+                                        <span class="button_content button_icon" style="width:65px; padding: 0 14px;"><i class="fas fa-star fa-2x"></i></span>
+                                        <span class="button_content">Remove From Wishlist</span>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form>
+                                    <input type="hidden" class="BookId" name="BookId" value='{{ book_data["google_id"] }}'>
+                                    <button class="add-wishl col-sm-12" id="1" onclick="addwish(this); return false;" type="submit" style="width:300px; height:50px">
+                                        <span class="button_content button_icon" style="width:65px; padding: 0 14px;"><i class="far fa-star fa-2x"></i></span>
+                                        <span class="button_content">Add To Wishlist</span>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                  </div>
+              </div>
+              
+            </div>
+            <div class="col-md-8">
+              <div class="card mb-3">
+                <div class="card-body" style="text-align: left !important;">
+                  <div class="row">
+                    <div class="col-sm-4">
+                      <h6 class="mb-0">Book Format</h6>
+                    </div>
+                    <div class="col-sm-8 text-secondary">
+                    {% if book_data['format'] %}
+                      {{ book_data['format'] }}
+                    {% else %}
+                      Unknown
+                    {% endif %}
+                    </div>
+                  </div>
+                  <hr>
+                  <div class="row">
+                    <div class="col-sm-4">
+                      <h6 class="mb-0">Year of Publication</h6>
+                    </div>
+                    <div class="col-sm-8 text-secondary">
+                        {% if book_data['year'] %}
+                            {{ book_data['year'] }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </div>
+                  </div>
+                  <hr>
+                  <div class="row">
+                    <div class="col-sm-4">
+                      <h6 class="mb-0">Publisher</h6>
+                    </div>
+                    <div class="col-sm-8 text-secondary">
+                        {% if book_data['publisher'] %}
+                            {{ book_data['publisher'] }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </div>
+                  </div>
+                  <hr>
+                  <div class="row">
+                    <div class="col-sm-4">
+                      <h6 class="mb-0">ISBN-10 / ISBN-13</h6>
+                    </div>
+                    <div class="col-sm-8 text-secondary">
+                        {% if book_data['isbn10'] %}
+                            {{ book_data['isbn10'] }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                         / 
+                        {% if book_data['isbn13'] %}
+                            {{ book_data['isbn13'] }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </div>
+                  </div>
+                  <hr>
+                  <div class="row">
+                    <div class="col-sm-4">
+                      <h6 class="mb-0">No. of Pages</h6>
+                    </div>
+                    <div class="col-sm-8 text-secondary">
+                        {% if book_data['pages'] %}
+                            {{ book_data['pages'] }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </div>
+                  </div>
+                  {% if book_data['categories']|length > 0 %}
+                  <hr>
+                  <div class="row">
+                    <div class="col-sm-12">
+                        <select class="col-sm-12 form-select" name="categories">
+                            <option hidden disabled selected value>Categories</option>
+                            {% for cat in book_data['categories'] %}
+                            <option disabled value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if book_data['descrip'] %}
+              <div class="card mb-3">
+                <div class="card-body" style="text-align: left !important;">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <h5>Summary</h5>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-xl-12">
+                            {{ book_data['descrip'] }}
+                        </div>
+                    </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <hr>
+              
+              {% if user_data['owned'] == 'inLib' %}
+              <div class="row gutters-sm">
+
+                {% if book_data['pages'] %}
+                <!-- Progress bar from https://bootstrapious.com -->
+                <div class="col-xl-6 mb-3">
+                  <div class="card">
+                    <div class="card-body">
+                      <h2 class="h6 font-weight-bold text-center mb-4">Current Reading Progress</h2>
+                      
+                      <div class="progress mx-auto">
+                        <span class="progress-left">
+                                      <span class="progress-bar border-primary" id="left-bar"></span>
+                        </span>
+                        <span class="progress-right">
+                                      <span class="progress-bar border-primary" id="right-bar"></span>
+                        </span>
+                        <div class="progress-value w-100 h-100 rounded-circle d-flex align-items-center justify-content-center">
+                          <div class="h2 font-weight-bold" id="percent-read">80<sup class="small">%</sup></div>
+                        </div>
+                      </div>
+
+                      <div class="mt-4" id="progress-content">
+                        {% if user_data['in_progress'] == 1 %}
+                        <button class="btn btn-primary  mb-3 mt-2" onclick="statusInProgress(); return false;" type="submit">Read Again?</button>
+                        {% else %}
+                        <div class="h4 font-weight-bold mb-1"><input class="font-weight-bold text-center" type="number" min="0" max="{{ book_data['pages'] }}" step="1" style="border: none; width: 100px" value="{{ user_data['pages_read'] }}"/></div><span class="small text-gray">Pages Read</span>
+                        {% endif %}
+                      </div>
+                      
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+
+
+                <div class="col-xl-6 mb-3">
+                  <div class="row gutters-sm">
+                    <div class="col-xl-12 mb-3">
+                      <div class="card">
+                        <div class="card-body">
+                          <h2 class="h6 font-weight-bold text-center mb-4">Book Rating</h2>
+                          
+                          <!--Star rating from https://bbbootstrap.com -->
+                          <div class="container d-flex justify-content-center">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="stars">
+                                        <form action="/updateRating" method="post"> 
+                                          <input name="booktag" type="hidden" value="{{ book_data['google_id'] }}">
+                                          <input class="star star-5" id="star-5" type="radio" name="star" onchange='this.form.submit();' value="5" /> <label class="star star-5" for="star-5"></label> 
+                                          <input class="star star-4" id="star-4" type="radio" name="star" onchange='this.form.submit();' value="4" /> <label class="star star-4" for="star-4"></label> 
+                                          <input class="star star-3" id="star-3" type="radio" name="star" onchange='this.form.submit();' value="3" /> <label class="star star-3" for="star-3"></label> 
+                                          <input class="star star-2" id="star-2" type="radio" name="star" onchange='this.form.submit();' value="2" /> <label class="star star-2" for="star-2"></label> 
+                                          <input class="star star-1" id="star-1" type="radio" name="star" onchange='this.form.submit();' value="1" /> <label class="star star-1" for="star-1"></label> 
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                          </div>
+                        
+                        </div>
+                      </div>
+                    </div> 
+
+                {% if not book_data['pages'] %}
+                  </div>
+                </div> 
+
+                <div class="col-xl-6 mb-3">
+                  <div class="row gutters-sm">
+                {% endif %}
+
+                
+                    <div class="col-xl-12 mb-3">
+                      <div class="card">
+                        <div class="card-body {% if not book_data['pages'] %}mb-3{% endif%}">
+                          <h2 class="h6 font-weight-bold text-center mb-{% if not book_data['pages'] %}4{% else %}1{% endif%}">Number of Times Read</h2>
+                          <i class="fas fa-minus-circle fa-2x" id="minus-counter"></i>
+                          <p class="mx-4" id="read-counter">{{ user_data["number_of_reads"] }}</p>
+                          <i class="fas fa-plus-circle fa-2x" id="plus-counter"></i>
+                        </div>
+                      </div>
+                    </div> 
+
+
+                  </div>
+                </div> 
+              </div>
+
+              <div class="row gutters-sm">
+                <div class="col-xl-12 mb-3">
+                  <div class="card">
+                    <div class="card-body">
+                      <h2 class="h6 font-weight-bold text-left mb-4">Notes</h2>
+                      <div class="form-group">
+                          <textarea class="form-control w-100 mb-2" form="notes-submit" id="book-notes" name="book-notes" placeholder="Write your reading notes here" rows="3">{{ user_data["notes"] }}</textarea>
+                          <form action="/updateNotes" id="notes-submit" method="post">
+                          <input name="booktag" type="hidden" value="{{ book_data['google_id'] }}">
+                          <button class="btn btn-primary float-left" id="notes-save" type="submit">Save</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {% endif %}
+
+
+
+            </div>
+          </div>
+
+        </div>
+    </div>
+{% endblock %}

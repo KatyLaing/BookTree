@@ -1,0 +1,136 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<!--link in CSS For the cards from https://www.bootdey.com-->
+<link href="/static/booksummary.css" rel="stylesheet">
+
+<script>
+    // Toggling visibility of passwords function from csestack.org
+    function PWVisToggle(){
+        let pwtoggle = document.querySelector('#togglePassword');
+        let pw = document.querySelector('#password');
+        type = pw.getAttribute('type');
+        if (type == "password"){
+            type = "text";
+        }
+        else{
+            type = "password";
+        }
+        pw.setAttribute("type", type);
+        pwtoggle.classList.toggle('fa-eye-slash');
+    }
+
+    function ConfVisToggle(){
+        let pwtoggle = document.querySelector('#toggleConf');
+        let pw = document.querySelector('#confirmation');
+        type = pw.getAttribute('type');
+        if (type == "password"){
+            type = "text";
+        }
+        else{
+            type = "password";
+        }
+        pw.setAttribute("type", type);
+        pwtoggle.classList.toggle('fa-eye-slash');
+    }
+
+    //global var for the disabled state of submission button
+    let SUBMIT = [false, false];
+
+    // funciton that determined whether the submit button should be enabled:
+    function toSubmitOrNot() {
+        let submit = document.querySelector('#regbtn');
+        if(SUBMIT[0] && SUBMIT[1])
+        {
+            submit.disabled = false;
+        }
+        else{
+            submit.disabled = true;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        //ensuring the passwords match before submission
+        let conf = document.querySelector('#confirmation');
+        let pw = document.querySelector('#password');
+        conf.addEventListener('keyup', function(){
+            if(conf.value === pw.value)
+            {
+                conf.style.backgroundColor = '#86ebc7';
+                SUBMIT[0]= true;
+            }
+            else {
+                conf.style.backgroundColor = '#ed9187';
+                SUBMIT[0] = false;
+            }
+            toSubmitOrNot();
+        });
+
+        pw.addEventListener('keyup', function(){
+            if(conf.value === pw.value)
+            {
+                conf.style.backgroundColor = '#86ebc7';
+                SUBMIT[0]= true;
+            }
+            else {
+                conf.style.backgroundColor = '#ed9187';
+                SUBMIT[0] = false;
+            }
+            toSubmitOrNot();
+        });
+
+        //ensure the name is not just whitespace before submission
+        let name = document.querySelector('#name');
+        name.addEventListener('keyup', function(){
+            let nametext = name.value.trim();
+            if(nametext === "")
+            {
+                SUBMIT[1]= false;
+            }
+            else {
+                SUBMIT[1]= true;
+            }
+            toSubmitOrNot();
+        });
+    });
+</script>
+{% endblock %}
+
+{% block title %}
+    Register
+{% endblock %}
+
+{% block main %}
+    <section class="main-title">
+        <h1 style="font-size:30px"><i class="fas fa-leaf"></i>Register for a BookTree account:</h1>
+    </section>
+
+    <div class="row gutters-sm">
+        <div class="col-lg-12 mb-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex flex-column align-items-center text-center">
+                <form action="/register" method="post">
+                    <div class="form-group">
+                        <input autocomplete="off" autofocus class="form-control" id="name" name="name" placeholder="Name" type="text" required>
+                    </div>
+                    <div class="form-group">
+                        <input autocomplete="off" class="form-control" id="email" name="email" placeholder="Email" type="email" required>
+                    </div>
+                    <div class="form-group">
+                        <input autocomplete="new-password" class="form-control" id="password" minlength=8 maxlength=20 name="password" placeholder="Password (8-20 characters)" type="password" required>
+                        <i class="far fa-eye" id="togglePassword" onclick="PWVisToggle(); return false;"></i>
+                    </div>
+                    <div class="form-group">
+                        <input autocomplete="off" class="form-control" id="confirmation" name="confirmation" placeholder="Re-Type Password" type="password" required>
+                        <i class="far fa-eye" id="toggleConf" onclick="ConfVisToggle(); return false;"></i>
+                    </div>
+                    <button class="btn btn-primary" id="regbtn" type="submit" disabled>Register</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
+{% endblock %}

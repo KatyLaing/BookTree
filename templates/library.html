@@ -1,0 +1,239 @@
+{% extends "layout.html" %}
+
+{% block script %}
+
+<!--link in CSS For the cards from https://www.bootdey.com-->
+<link href="/static/booksummary.css" rel="stylesheet">
+
+<!--Link in the JS script for searching bookshelves and displaying sorted/search results-->
+<script src="/static/SortSearchDisplay.js"></script>
+
+
+<script>
+    function removelib(e){
+        //get the id of the book
+        let book_id = document.getElementsByClassName('BookId')[e.id].value;
+        //disable all buttons until SQL transaction complete
+        $(':button').prop('disabled', true);
+        //remove this books from the user's library:
+        $.post('/removeFromLib', {id: book_id}, function(){
+            $(':button').prop('disabled', false);
+        });
+        e.className = "add-lib";
+        e.onclick = function() {addlib(this); return false;};
+        e.innerHTML = "<span class='button_content button_icon'><i class='far fa-plus-square fa-2x'></i></span><span class='button_content'>Add To Library</span>";
+        return false;
+    }
+
+    function addlib(e){
+        //identify the button clicked
+        let book_id = document.getElementsByClassName('BookId')[e.id].value;
+        //disable all buttons, re-enable when SQL alterations complete
+        $(':button').prop('disabled', true);
+        //add the book to library and remove from wishlist
+        $.post('/addtolib', {id: book_id}, function(){
+            $(':button').prop('disabled', false);
+        });
+        // change button to be a remove from library button:
+        e.className = "remove-book";
+        e.onclick = function() {removelib(this); return false;};
+        e.innerHTML = "<span class='button_content button_icon'><i class='far fa-minus-square fa-2x'></i></span><span class='button_content'>Remove From Library</span>";
+        return false;
+    }
+
+    
+    document.addEventListener('DOMContentLoaded', function(){
+        //Add event listener that enables the select all toggle
+        select = document.getElementById("SelectAll");
+        select.addEventListener('change', function(){
+            if(select.checked){
+                $('.form-check-input').each(function(){
+                    this.checked= true;
+                });
+            }
+            else{
+                $('.form-check-input').each(function(){
+                    this.checked= false;
+                });
+            }
+        });
+
+        //ensure that if any box is unchecked then so is the select all
+        $('.form-check-input').change(function(){
+            if(this.checked == false){
+                $('#SelectAll')[0].checked = false;
+            }
+        });
+    });
+</script>
+
+{% if shelf_size > 1 %}
+<script>
+    // Add Event listener to sort the displayed books on change of selected sort method
+    document.addEventListener('DOMContentLoaded', function() {
+        sort_select = document.getElementById("sort");
+        sort_select.addEventListener('change', function(){
+            // disable any other selection/button for duration of function
+            sort_select.disabled = true;
+            $(':button').prop('disabled', true);
+            //detect the shelf name and the associated input
+            let shelf_name = document.getElementById("shelf-name").value;
+            let shelf_input_dict = {"My Library" : "all", "In Progress" : "in-progress", "Unread" : "unread", "Read" : "read"};
+            let shelf_input = shelf_input_dict[shelf_name];
+            // get the details of any current search on the shelf:
+            book_search = document.getElementById("current-search").value;
+            search_method = document.getElementById("current-search-method").value;
+            // sort the current shelf according to specified method (and respecting any current search)
+            $.post('/sortAndSearchBooks', { sort: sort_select.value, shelf : shelf_input , search_term :  book_search, search_method : search_method}, function(books){
+                // display sorted results
+                LibSortSearchDisplay(books);
+                sort_select.disabled = false;
+                $(':button').prop('disabled', false);
+            });
+        });
+    });
+</script>
+{% endif %}
+
+
+{% endblock %}
+
+{% block title %}
+    {{ shelf_name }}
+{% endblock %}
+
+{% block main %}
+    <section class="main-title">
+        <h1 class="main-title"><i class="fas fa-leaf"></i>{{ shelf_name }}</h1>
+    </section>
+    
+    <input type="hidden" id="shelf-name" value="{{ shelf_name }}">
+    <input type="hidden" id="current-search" value="">
+    <input type="hidden" id="current-search-method" value="">
+
+    {% if shelf_size > 1 %}
+    <div class="row gutters-sm">
+        <div class="col-sm-12 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex flex-column align-items-center text-center">
+                        <form class="form-inline">
+                                <select class="custom-select mr-5" name="sort" id="sort">
+                                    <option hidden disabled selected value>Sort Books By:</option>
+                                    <option value="az-title">Alphabetically by Title</option>
+                                    <option value="az-author">Alphabetically by Author</option>
+                                    <option value="date-added">Date Added</option>
+                                    <option value="date-moded">Most Recent</option>
+                                    <option value="rating">Rating</option>
+                                </select>
+                                <input autocomplete="off" class="form-control ml-3 mr-2" id="book-search" name="book-search" placeholder="Search Your Books" type="search" >
+                                <select class="custom-select mr-2" name="search-by" id="search-method" required>
+                                    <option hidden disabled selected value>Search By:</option>
+                                    <option value="title-search">Search by Title</option>
+                                    <option value="author-search">Search by Author</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="LibSearchBooks(); return false;" type="submit">Search</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if shelf_size > 0 %}
+    {% if session.shelves.items()|length > 0%}
+    <div class="row gutters-sm">
+        <div class="col-sm-12 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex flex-column align-items-center text-center">
+                        <form class="form-inline" id="AddToShelf" action="/addtoshelf" method="post">
+                            <label for="shelves">Add selected books to:</label>
+                            <select class="custom-select mx-3" name="shelves" id="shelves" required>
+                                <option hidden disabled selected value>Select A Bookshelf</option>
+                                {% for id, shelf in session.shelves.items() %}
+                                <option value="{{ id }}">{{ shelf }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary">Add</button>
+                            
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <table class="styled-table">
+    <thead>
+        <tr>
+            <th><input type="checkbox" name="SelectAll" id="SelectAll" style="width: 20px; height: 20px;  bottom: 267px; left:447px"></th>
+            <th>Cover</th>
+            <th>Title</th>
+            <th>Author(s)</th>
+            <th>Year</th>
+            <th>Book/Ebook</th>
+            <th>Rating</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i, book in books %}
+        <tr>
+            <td><div class="form-check form-check-inline ml-3"><input type="checkbox" class="form-check-input filled-in" form="AddToShelf" name="Book" value="{{ book['google_id'] }}" style="width: 20px; height: 20px;"></div></td>
+            {% if book['thumbnail'] %}
+            <td><img src="{{ book['thumbnail'] }}"></td>
+            {% else %}
+            <td><img src="static/bookcase.jpg"></td>
+            {% endif %}
+            <td>
+                <form  action="/book-summary" method="post">
+                    <input name="booktag" type="hidden" value="{{ book['google_id'] }}">
+                    <button class="book-link" type=submit>{{ book['title'] }}{% if book['subtitle'] %} - {{ book['subtitle'] }}{% endif %}</button>
+                </form>
+            </td>
+            <td>{{ book['authors'] }}</td>
+            <td>{{ book['year'] }}</td>
+            {% if book['format'] == 'Book' %}
+            <td><img src="/static/bookfavicon.ico" alt="Book logo"></td>
+            {% endif %}
+            {% if book['format'] == 'Ebook' %}
+            <td><img src="/static/phonefavicon.ico" alt="Phone logo"></td>
+            {% endif %}
+            {% if book['format'] == 'Unknown' %}
+            <td><img src="/static/questionfavicon.ico" alt="Question Mark"></td>
+            {% endif %}
+            <td>
+                <span class="fa-stack fa-2x">
+                    <i class="fas fa-star fa-stack-2x" style="color:#FD4"></i>
+                    <span class="fa fa-stack-1x" style="display:block;margin-left:4px;">
+                      <span style="font-size:25px;font-family: sans-serif;">
+                        {{ book['rating'] }}
+                      </span>
+                    </span>
+                </span>
+            </td>
+            <td>
+                <form>
+                    <input type="hidden" class="BookId" name="BookId" value="{{ book['google_id'] }}">
+                    <button class="remove-book ml-3" id="{{ i }}" onclick="removelib(this); return false;" type="submit" style="width: 180px">
+                        <span class="button_content button_icon"><i class="far fa-minus-square fa-2x"></i></span>
+                        <span class="button_content">Remove From Library</span>
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+
+    {% if shelf_size == 0%}
+    <p>
+        <h2 class="h6 font-weight-bold text-center mb-4">Empty Bookshelf. So Sad <i class="far fa-frown"></i></h2>
+    </p>
+    {% endif %}
+    
+{% endblock %}

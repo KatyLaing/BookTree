@@ -1,0 +1,141 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<!--Link in the functions for adding/removing books from the wishilist and user library-->
+<script src="/static/addRemoveBooks.js"></script>
+
+<!--link in CSS For the cards from https://www.bootdey.com-->
+<link href="/static/booksummary.css" rel="stylesheet">
+
+<!--Link in the JS script for searching bookshelves and displaying sorted/search results-->
+<script src="/static/SortSearchDisplay.js"></script>
+
+{% if shelf_size > 1%}
+<script>
+    // Add Event listener to sort the displayed books on change of selected sort method
+    document.addEventListener('DOMContentLoaded', function() {
+        sort_select = document.getElementById("sort");
+        sort_select.addEventListener('change', function(){
+            // disable any other selection/button for duration of function
+            sort_select.disabled = true;
+            $(':button').prop('disabled', true);
+            // get the details of any current search on the shelf:
+            book_search = document.getElementById("current-search").value;
+            search_method = document.getElementById("current-search-method").value;
+            // sort the user's wishlist according to specified method (and respecting any current search)
+            $.post('/sortAndSearchBooks', { sort: sort_select.value, shelf : "wishl" , search_term :  book_search, search_method : search_method}, function(books){
+                // display sorted results
+                WishlSortSearchDisplay(books)
+                sort_select.disabled = false;
+                $(':button').prop('disabled', false);
+            });
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
+
+{% block title %}
+    Wishlist
+{% endblock %}
+
+{% block main %}
+    <section class="main-title">
+        <h1><i class="fas fa-leaf"></i>My Wishlist</h1>
+    </section>
+    <input type="hidden" id="current-search" value="">
+    <input type="hidden" id="current-search-method" value="">
+
+    {% if shelf_size > 1%}
+    <div class="row gutters-sm">
+        <div class="col-sm-12 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex flex-column align-items-center text-center">
+                        <form class="form-inline">
+                                <select class="custom-select mr-5" name="sort" id="sort">
+                                    <option hidden disabled selected value>Sort Books By:</option>
+                                    <option value="az-title">Alphabetically by Title</option>
+                                    <option value="az-author">Alphabetically by Author</option>
+                                    <option value="date-added">Date Added</option>
+                                </select>
+                                <input autocomplete="off" class="form-control ml-3 mr-2" id="book-search" name="book-search" placeholder="Search Your Books" type="search" >
+                                <select class="custom-select mr-2" name="search-by" id="search-method" required>
+                                    <option hidden disabled selected value>Search By:</option>
+                                    <option value="title-search">Search by Title</option>
+                                    <option value="author-search">Search by Author</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="WishlSearchBooks(); return false;" type="submit">Search</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <table class="styled-table wishlist">
+        <thead>
+            <tr>
+                <th>Cover</th>
+                <th>Title</th>
+                <th>Author(s)</th>
+                <th>Year</th>
+                <th>Book/Ebook</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i, book in books %}
+            <tr>
+                {% if book['thumbnail'] %}
+                <td><img src="{{ book['thumbnail'] }}"></td>
+                {% else %}
+                <td><img src="static/bookcase.jpg"></td>
+                {% endif %}
+                <td>
+                    <form  action="/book-summary" method="post">
+                        <input name="booktag" type="hidden" value="{{ book['google_id'] }}">
+                        <button class="book-link" type=submit>{{ book['title'] }}{% if book['subtitle'] %} - {{ book['subtitle'] }}{% endif %}</button>
+                    </form>
+                </td>
+                <td>{{ book['authors'] }}</td>
+                <td>{{ book['year'] }}</td>
+                {% if book['format'] == 'Book' %}
+                <td><img src="/static/bookfavicon.ico" alt="Phone logo"></td>
+                {% endif %}
+                {% if book['format'] == 'Ebook' %}
+                <td><img src="/static/phonefavicon.ico" alt="Phone logo"></td>
+                {% endif %}
+                {% if book['format'] == 'Unknown' %}
+                <td><img src="/static/questionfavicon.ico" alt="Question Mark"></td>
+                {% endif %}
+                <td>
+                    <form>
+                        <input type="hidden" class="BookId" name="BookId" value="{{ book['google_id'] }}">
+                        <button class="add-lib" id="{{ 2*i }}" onclick="addlib(this); return false;" type="submit">
+                            <span class="button_content button_icon"><i class="far fa-plus-square fa-2x"></i></span>
+                            <span class="button_content">Add To Library</span>
+                        </button>
+                    </form>
+                </td>
+                <td>
+                    <form>
+                        <input type="hidden" class="BookId" name="BookId" value="{{ book['google_id'] }}">
+                        <button class="remove-book" id="{{ 2*i + 1 }}" onclick="removewish(this); return false;" type="submit">
+                            <span class="button_content button_icon"><i class="fas fa-star fa-2x"></i></span>
+                            <span class="button_content">Remove From Wishlist</span>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if shelf_size == 0%}
+    <p>
+        <h2 class="h6 font-weight-bold text-center mb-4">Empty Bookshelf. So Sad <i class="far fa-frown"></i></h2>
+    </p>
+    {% endif %}
+{% endblock %}

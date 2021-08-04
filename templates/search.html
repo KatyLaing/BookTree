@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<!--Link in function for performing and displaying book searches-->
+<script src="/static/booksearch.js"></script>
+
+<!--Link in the functions for adding/removing books from the wishilist and user library-->
+<script src="/static/addRemoveBooks.js"></script>
+
+<!--link in CSS For the cards from https://www.bootdey.com-->
+<link href="/static/booksummary.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Search For Books
+{% endblock %}
+
+{% block main %}
+    <section class="main-title">
+        <h1 ><i class="fas fa-leaf"></i>Search for a book:</h1>
+    </section>
+
+    <div class="row gutters-sm">
+        <div class="col-lg-12 mb-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex flex-column align-items-center text-center">
+                <h6 class="h6 font-weight-bold text-center mb-4">Search for books by decription or ISBN:</h6>
+                <form class="form-inline">
+                    <div class="form-group">
+                        <input autofocus autocomplete="off" class="form-control mx-2" id="bookSearch" name="book" placeholder="Book Title and/or Author" style="width:400px" type="search">
+                    </div>
+                    <div class="form-group">
+                        <input autofocus autocomplete="off" class="form-control mx-2" id="isbn" name="isbn" placeholder="ISBN" type="search" >
+                    </div>
+                    <button class="btn btn-primary mx-2" onclick="booksearch(); return false;" type="submit">Search</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div id="results">
+
+    </div>
+{% endblock %}

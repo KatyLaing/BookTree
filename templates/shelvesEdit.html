@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+
+{% block script %}
+
+<!--link in CSS For the cards from https://www.bootdey.com-->
+<link href="/static/booksummary.css" rel="stylesheet">
+
+
+<script>
+    function shelf_edit(e){
+        swal({
+            title: "Edit your " + e.innerHTML + " shelf:",
+            text: "Do you want to rename the shelf or delete it?",
+            buttons: {
+                rename: {
+                    text: "Rename",
+                    value: 0,
+                },
+                delete: {
+                    text: "Delete",
+                    value: 1,
+                },
+            },
+        })
+        .then((outcome) => {
+            if(outcome == 0){
+                swal({title: "Rename your shelf:", content: "input",})
+                .then((value) => {
+                    $.post('/renameshelf', { shelf_id: e.id, shelf_name: value}, function(result) {
+                        if(result == 'success'){
+                            swal({
+                            title: "Shelf renamed!",
+                            icon: "success",
+                            }).then((value) => {
+                                window.location.reload();
+                            });
+                        }
+                        if(result == 'empty'){
+                            swal({
+                                title: "Shelves must have a non-empty name",
+                                icon: "warning",
+                                dangerMode: true,
+                            });
+                        }
+                        if(result == 'repeat'){
+                            swal({
+                                title: "Cannot have two shelves with the same name",
+                                icon: "warning",
+                                dangerMode: true,
+                            });
+                        }
+                        if(result == 'error'){
+                            swal({
+                                title: "Shelf could not be renamed",
+                                icon: "warning",
+                                dangerMode: true,
+                            });
+                        }
+                    });
+                });
+            }
+            if(outcome == 1){
+                $.post('/deleteshelf', { shelf_id: e.id}, function(result){
+                    if(result == 'success'){
+                        swal({
+                        title: "Shelf successfully deleted!",
+                        icon: "success",
+                        }).then((value) => {
+                            window.location.reload();
+                        });
+                    }
+                    if(result == 'error'){
+                        swal({
+                            title: "Shelf could not be deleted",
+                            icon: "warning",
+                            dangerMode: true,
+                        });
+                    }
+                });
+            }
+        });
+        return false;
+    }
+</script>
+
+{% endblock %}
+
+{% block title %}
+    Bookshelves
+{% endblock %}
+
+{% block main %}
+    
+    <div class="col-4 mt-3 mx-auto">
+        <section class="main-title">
+            <h1 style="font-size: 30px;"><i class="fas fa-leaf"></i>My Bookshelves</h1>
+        </section>
+        <div class="card">
+        <div class="card-header">
+          Select a Bookshelf to Edit
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for id, shelf in session.shelves.items() %}
+            <li class="list-group-item" id="{{ id }}" onclick="shelf_edit(this);return false;" style="cursor: pointer;">{{ shelf }}</li>
+            {% endfor %}
+        </ul>
+        </div>
+    </div>
+    
+
+
+
+{% endblock %}

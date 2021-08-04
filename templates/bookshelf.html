@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<!--link in CSS For the cards from https://www.bootdey.com-->
+<link href="/static/booksummary.css" rel="stylesheet">
+
+<!--Link in the JS script for searching bookshelves and displaying sorted/search results-->
+<script src="/static/SortSearchDisplay.js"></script>
+
+
+<script>
+    function removebookfromshelf(e){
+        //get the id of the book
+        let book_id = document.getElementsByClassName('BookId')[e.id].value;
+        //get the shelf id
+        let shelf_id = document.getElementsByClassName('ShelfId')[0].value;
+        
+        //disable all buttons until SQL transaction complete
+        $(':button').prop('disabled', true);
+        //remove this books from the user's library:
+        $.post('/removeFromShelf', { shelf_id: shelf_id, book_id: book_id}, function(outcome){
+            $(':button').prop('disabled', false);
+            
+            if(outcome == 'error'){
+                swal({
+                    title: "An error occurred",
+                    icon: "warning",
+                    dangerMode: true,
+                });
+            }
+            if(outcome == 'success'){
+                window.location.reload();
+            }
+            
+        });
+
+        return false;
+    }
+</script>
+
+{% if shelf_size > 1%}
+<script>
+    // Add Event listener to sort the displayed books on change of selected sort method
+    document.addEventListener('DOMContentLoaded', function() {
+        sort_select = document.getElementById("sort");
+        sort_select.addEventListener('change', function(){
+            // disable any other selection/button for duration of function
+            sort_select.disabled = true;
+            $(':button').prop('disabled', true);
+            // get the shelf id
+            let shelf_id = document.getElementsByClassName('ShelfId')[0].value;
+            // get the details of any current search on the shelf:
+            book_search = document.getElementById("current-search").value;
+            search_method = document.getElementById("current-search-method").value;
+            // sort the current shelf according to specified method (and respecting any current search)
+            $.post('/sortAndSearchBooks', { sort: sort_select.value, shelf : shelf_id , search_term :  book_search, search_method : search_method}, function(books){
+                // display sorted results
+                BookshelfSortSearchDisplay(books);
+                sort_select.disabled = false;
+                $(':button').prop('disabled', false);
+            });
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
+
+{% block title %}
+    {{ shelf_name }}
+{% endblock %}
+
+{% block main %}
+    <section class="main-title">
+        <h1><i class="fas fa-leaf"></i>{{ shelf_name }} Bookshelf</h1>
+    </section>
+    <input type="hidden" class="ShelfId" name="ShelfId" value="{{ shelf_id }}">
+
+    <input type="hidden" id="current-search" value="">
+    <input type="hidden" id="current-search-method" value="">
+
+    {% if shelf_size > 1%}
+    <div class="row gutters-sm">
+        <div class="col-sm-12 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex flex-column align-items-center text-center">
+                        <form class="form-inline">
+                                <select class="custom-select mr-5" name="sort" id="sort">
+                                    <option hidden disabled selected value>Sort Books By:</option>
+                                    <option value="az-title">Alphabetically by Title</option>
+                                    <option value="az-author">Alphabetically by Author</option>
+                                    <option value="date-added">Date Added</option>
+                                    <option value="date-moded">Most Recent</option>
+                                    <option value="rating">Rating</option>
+                                </select>
+                                <input autocomplete="off" class="form-control ml-3 mr-2" id="book-search" name="book-search" placeholder="Search Your Books" type="search" >
+                                <select class="custom-select mr-2" name="search-by" id="search-method" required>
+                                    <option hidden disabled selected value>Search By:</option>
+                                    <option value="title-search">Search by Title</option>
+                                    <option value="author-search">Search by Author</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="BookhelfSearchBooks(); return false;" type="submit">Search</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <table class="styled-table">
+    <thead>
+        <tr>
+            <th>Cover</th>
+            <th>Title</th>
+            <th>Author(s)</th>
+            <th>Year</th>
+            <th>Book/Ebook</th>
+            <th>Rating</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i, book in books %}
+        <tr>
+            {% if book['thumbnail'] %}
+            <td><img src="{{ book['thumbnail'] }}"></td>
+            {% else %}
+            <td><img src="static/bookcase.jpg"></td>
+            {% endif %}
+            <td>
+                <form  action="/book-summary" method="post">
+                    <input name="booktag" type="hidden" value="{{ book['google_id'] }}">
+                    <button class="book-link" type=submit>{{ book['title'] }}{% if book['subtitle'] %} - {{ book['subtitle'] }}{% endif %}</button>
+                </form>
+            </td>
+            <td>{{ book['authors'] }}</td>
+            <td>{{ book['year'] }}</td>
+            {% if book['format'] == 'Book' %}
+            <td><img src="/static/bookfavicon.ico" alt="Phone logo"></td>
+            {% endif %}
+            {% if book['format'] == 'Ebook' %}
+            <td><img src="/static/phonefavicon.ico" alt="Phone logo"></td>
+            {% endif %}
+            {% if book['format'] == 'Unknown' %}
+            <td><img src="/static/questionfavicon.ico" alt="Question Mark"></td>
+            {% endif %}
+            <td>
+                <span class="fa-stack fa-2x">
+                    <i class="fas fa-star fa-stack-2x" style="color:#FD4"></i>
+                    <span class="fa fa-stack-1x" style="display:block;margin-left:4px;">
+                      <span style="font-size:25px;font-family: sans-serif;">
+                        {{ book['rating'] }}
+                      </span>
+                    </span>
+                </span>
+            </td>
+            <td>
+                <form>
+                    <input type="hidden" class="BookId" name="BookId" value="{{ book['google_id'] }}">
+                    <button class="remove-book" id="{{ i }}" onclick="removebookfromshelf(this); return false;" type="submit" style="width: 200px; height:55px">
+                        <span class="button_content button_icon"><i class="far fa-minus-square fa-2x"></i></span>
+                        <span class="button_content">Remove From Shelf</span>
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+    {% if shelf_size == 0%}
+    <p>
+        <h2 class="h6 font-weight-bold text-center mb-4">Add books to your bookshelf from the main library</h2>
+    </p>
+    {% endif %}
+    
+{% endblock %}
